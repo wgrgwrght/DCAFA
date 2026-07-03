@@ -1,17 +1,3 @@
-# DCAFA: Differential Community Abundance and Feature Analysis for Histological Images
-
-Please see paper
-
-https://www.biorxiv.org/content/10.64898/2026.04.28.721329v1
-
-@article{wright2026dcafa,
-  title={DCAFA: Differential Community Abundance and Feature Analysis for Histological Images},
-  author={Wright, George and Keller, Piotr and Muter, Joanne and Brosens, Jan and Tejpar, Sabine and Minhas, Fayyaz},
-  journal={bioRxiv},
-  pages={2026--04},
-  year={2026},
-  publisher={Cold Spring Harbor Laboratory}
-}
 
 # DCAFA: Differential Community Abundance and Feature Analysis
 
@@ -28,7 +14,7 @@ Histological images contain complex spatial organisation, where clinically relev
 DCAFA addresses this by:
 
 * Grouping instances into **latent communities** (shared morphological or phenotypic patterns)
-* Quantifying how these communities vary across outcomes
+* Quantifying how these communities vary across outcomes at both the instance and bag level
 * Linking **instance-level features** to outcomes both globally and within communities
 
 The method combines:
@@ -44,10 +30,7 @@ within a unified statistical framework based on regression models.
 
 ## 🔬 Key Features
 
-* 🧩 **Community Detection**
-  Identifies recurring structural patterns in histological data
-
-* 📊 **Differential Abundance Testing**
+* 📊 **Differential Abundance Testing for Communities**
   Detects communities enriched or depleted across conditions
 
 * 🔎 **Feature Attribution**
@@ -63,12 +46,13 @@ within a unified statistical framework based on regression models.
 
 ## 🧠 Applications
 
-DCAFA has been applied to multiple biomedical domains, including but not limited to:
+DCAFA has been applied to multiple biomedical domains, including:
 
 * Histopathology (e.g. endometrial tissue)
 * Spatial transcriptomics
 * Multiplex immunofluorescence imaging
 * Cell-type composition analysis in cancer
+* Framework applicable to many more...
 
 These analyses reveal **compositional shifts and context-specific feature associations** not captured by conventional feature-based methods.
 
@@ -81,34 +65,47 @@ git clone https://github.com/wgrgwrght/DCAFA.git
 cd DCAFA
 ```
 
-*(Add environment setup instructions here if applicable — e.g. conda, pip, Docker)*
+*requirements.txt available for environment*
 
 ---
 
 ## ⚡ Quick Start
 
 ```python
-# Example usage (placeholder)
+# Example usage 
 
-from dcafa import DcafaModel
+import DCAFA
 
-model = DcafaModel()
-model.fit(data, metadata)
+df = **define data here**
 
-results = model.analyse()
-model.plot(results)
+feature_cols = [f"x_{i+1}" for i in range(5)]
+target_cols = ["target"] 
+
+covariates = []  # optional; can be [] if none
+
+results = DCAFA.fit_inst_fa(
+    df=df.copy(),
+    feature_cols=feature_cols,
+    target_cols=target_cols,
+    covariates=covariates,
+    bag_id_col="PID",
+    families={tgt: "gaussian" for tgt in target_cols},
+    cov_type="cluster"
+)
+
+DCAFA.plot_fa_inst_heatmap(results)
+
 ```
 
-*(Replace with real usage examples from the repo)*
+*Examples for all analysis types available in examples jupyter notebook*
 
 ---
 
 ## 📊 Workflow
 
-1. Input histological or spatial data with associated metadata
+1. Input feature data with associated metadata
 2. Learn latent communities from instance-level features (this is left to the user)
 3. Perform:
-
    * Community abundance analysis
    * Feature attribution analysis
 4. Interpret statistically significant results
@@ -127,11 +124,6 @@ bioRxiv.
 
 ---
 
-## 📜 License
-
-*(Specify license here — e.g. MIT, GPL, etc.)*
-
----
 
 ## 🤝 Contributing
 
