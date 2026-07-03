@@ -97,7 +97,7 @@ DCAFA.plot_fa_inst_heatmap(results)
 
 ```
 
-*Examples for all analysis types available in examples jupyter notebook*
+*Examples for all analysis types available in examples.ipynb jupyter notebook*
 
 ---
 
