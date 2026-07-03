@@ -5,6 +5,8 @@
 
 It is designed to identify meaningful biological patterns that arise from **groups of structures (e.g. cells, glands, tissue regions)** rather than individual features alone.
 
+Paper: [bioRxiv link](https://www.biorxiv.org/content/10.64898/2026.04.28.721329v1)
+
 ---
 
 ## 📄 Overview
