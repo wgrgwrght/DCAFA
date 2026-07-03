@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.cluster import KMeans
 
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -82,6 +83,34 @@ def aggregate_bag_features(
 
     return out
 
+
+def cluster_data(data, feature_names, n_clusters=5, norm=True, sname="umap_clusters.csv"):
+    if os.path.exists(sname):
+        return
+
+    # Select features for UMAP (exclude 'LH' and 'n' label columns)
+    features = data[feature_names]
+
+    # normalise features for each feature
+    if norm:
+        features = (features - features.mean()) / features.std()
+
+    # Compute UMAP embedding to 2D
+    embedding = features.values
+
+    # Use KMeans clustering as a simple cluster approach on UMAP embedding
+    kmeans = KMeans(n_clusters=n_clusters).fit(embedding)
+    cluster_labels = kmeans.labels_
+    cluster_labels = cluster_labels + 1
+
+    # Add cluster labels to the grouped dataframe
+    data['cluster'] = cluster_labels
+
+    # Save the dataframe with cluster labels
+    if sname:
+        data.to_csv(sname, index=True)
+
+    return data
 
 
 # Feature analysis (FA) for instance-level outcomes
@@ -864,8 +893,6 @@ def plot_fa_aggregate_heatmap(results):
     plt.title('FA Aggregation \n***q<0.001, **q<0.01, *q<0.05')
     plt.tight_layout()
     plt.show()
-
-
 
 def ca_stacked_area_plot(df: pd.DataFrame, target_col: str = "y_resp", cluster_cols: list = ['c_1']):
 
