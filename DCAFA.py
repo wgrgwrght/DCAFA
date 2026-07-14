@@ -895,35 +895,85 @@ def plot_fa_aggregate_heatmap(results):
     plt.show()
 
 
+def ca_stacked_area_plot(
+    df1: pd.DataFrame,
+    target_col: str = "y_resp",
+    cluster_cols: list = ['c_1'],
+    nbins: int = 10
+):
+    df = df1.copy()
 
-def ca_stacked_area_plot(df: pd.DataFrame, target_col: str = "y_resp", cluster_cols: list = ['c_1']):
+    # Convert cluster counts to percentages
+    df[cluster_cols] = df[cluster_cols].div(df['n'], axis=0) * 100
 
-    df[cluster_cols] = df[cluster_cols].div(df['n'], axis=0) * 100  # Convert to percentages
+    # Detect if continuous
+    n_unique = df[target_col].nunique()
+    n_total = len(df[target_col])
 
-    # Compute MEAN proportions across LH groups
-    grouped_counts = df.groupby('y_resp')[cluster_cols + ['n']].sum().reset_index()
+    if pd.api.types.is_numeric_dtype(df[target_col]) and (n_unique / n_total) > 0.05:
+        # Bin continuous variable and keep intervals
+        df['_bin'] = pd.cut(df[target_col], bins=nbins)
 
-    # Convert to within-group percentages so each LH sums to 100
+        # Use bin midpoints for plotting (keeps original scale feel)
+        df['y_resp'] = df['_bin'].apply(lambda x: x.mid)
+
+        # Optional: keep labels for nicer xticks
+        bin_labels = (
+            df[['_bin', 'y_resp']]
+            .drop_duplicates()
+            .sort_values('y_resp')
+        )
+    else:
+        df['y_resp'] = df[target_col]
+        bin_labels = None
+
+    # Aggregate
+    grouped_counts = (
+        df.groupby('y_resp')[cluster_cols + ['n']]
+        .sum()
+        .reset_index()
+        .sort_values('y_resp')
+    )
+
+    # Normalize to 100% within each group
     grouped_counts[cluster_cols] = grouped_counts[cluster_cols].div(
         grouped_counts[cluster_cols].sum(axis=1), axis=0
     ) * 100
 
-    # Create 100% stacked area plot
+    # Plot
     plt.figure(figsize=(12, 7))
 
     colors = sns.color_palette('tab10', len(cluster_cols))
     bottom = np.zeros(len(grouped_counts))
 
+    x = grouped_counts['y_resp'].values
+
     for i, cluster in enumerate(cluster_cols):
         cluster_data = grouped_counts[cluster].values
-        plt.fill_between(grouped_counts['y_resp'], bottom, bottom + cluster_data,
-                        color=colors[i], alpha=0.8, label=cluster)
+        plt.fill_between(
+            x,
+            bottom,
+            bottom + cluster_data,
+            color=colors[i],
+            alpha=0.8,
+            label=cluster
+        )
         bottom += cluster_data
 
     plt.ylabel('Proportion (%)', fontsize=12)
-    plt.xlabel('Value', fontsize=12)
+    plt.xlabel(target_col, fontsize=12)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
     plt.grid(True, alpha=0.3)
-    plt.xticks(grouped_counts['y_resp'])
+
+    # Use interval labels if continuous
+    if bin_labels is not None:
+        plt.xticks(
+            bin_labels['y_resp'],
+            [str(interval) for interval in bin_labels['_bin']],
+            rotation=45
+        )
+    else:
+        plt.xticks(x)
+
     plt.tight_layout()
     plt.show()
