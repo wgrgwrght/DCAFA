@@ -894,31 +894,36 @@ def plot_fa_aggregate_heatmap(results):
     plt.tight_layout()
     plt.show()
 
+
+
 def ca_stacked_area_plot(df: pd.DataFrame, target_col: str = "y_resp", cluster_cols: list = ['c_1']):
 
-    # Compute MEAN proportions across LH groups (though you have 1 sample per LH here)
-    mean_props = df.groupby(target_col)[cluster_cols].mean().reset_index()
+    df[cluster_cols] = df[cluster_cols].div(df['n'], axis=0) * 100  # Convert to percentages
 
-    # Melt for plotting
-    plot_df = mean_props.melt(id_vars=target_col, var_name='cluster', value_name='proportion')
+    # Compute MEAN proportions across LH groups
+    grouped_counts = df.groupby('y_resp')[cluster_cols + ['n']].sum().reset_index()
+
+    # Convert to within-group percentages so each LH sums to 100
+    grouped_counts[cluster_cols] = grouped_counts[cluster_cols].div(
+        grouped_counts[cluster_cols].sum(axis=1), axis=0
+    ) * 100
 
     # Create 100% stacked area plot
     plt.figure(figsize=(12, 7))
-    colors = plt.cm.Set3(np.linspace(0, 1, 10))
 
-    # Stack areas cumulatively
-    bottom = np.zeros(len(mean_props))
+    colors = sns.color_palette('tab10', len(cluster_cols))
+    bottom = np.zeros(len(grouped_counts))
+
     for i, cluster in enumerate(cluster_cols):
-        cluster_data = mean_props[cluster]
-        plt.fill_between(mean_props[target_col], bottom, bottom + cluster_data,
-                        color=colors[i], alpha=0.8, label=f'{cluster}')
+        cluster_data = grouped_counts[cluster].values
+        plt.fill_between(grouped_counts['y_resp'], bottom, bottom + cluster_data,
+                        color=colors[i], alpha=0.8, label=cluster)
         bottom += cluster_data
 
     plt.ylabel('Proportion (%)', fontsize=12)
-    plt.xlabel('Target', fontsize=12)
-    plt.title(f'Mean Cluster Proportions Across {target_col}', fontsize=14, fontweight='bold')
+    plt.xlabel('Value', fontsize=12)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
     plt.grid(True, alpha=0.3)
+    plt.xticks(grouped_counts['y_resp'])
     plt.tight_layout()
     plt.show()
-
