@@ -83,34 +83,88 @@ def aggregate_bag_features(
 
     return out
 
-
-def cluster_data(data, feature_names, n_clusters=5, norm=True, sname="umap_clusters.csv"):
-    if os.path.exists(sname):
-        return
-
-    # Select features for UMAP (exclude 'LH' and 'n' label columns)
-    features = data[feature_names]
-
-    # normalise features for each feature
+# clustering function
+def cluster_data(df, feature_cols, n_clusters=5, norm=False, sname=False):
+    """
+    Cluster the data based on the feature columns using KMeans clustering.
+    
+    Parameters:
+    - df: DataFrame containing the data to cluster
+    - feature_cols: List of feature column names to use for clustering
+    - n_clusters: Number of clusters for KMeans
+    - norm: If True, normalize the features before clustering
+    - sname: If True, return cluster names instead of indices
+    
+    Returns:
+    - DataFrame with an additional column 'cluster' indicating cluster assignments
+    """
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+    
+    X = df[feature_cols].values
+    
     if norm:
-        features = (features - features.mean()) / features.std()
-
-    # Compute UMAP embedding to 2D
-    embedding = features.values
-
-    # Use KMeans clustering as a simple cluster approach on UMAP embedding
-    kmeans = KMeans(n_clusters=n_clusters).fit(embedding)
-    cluster_labels = kmeans.labels_
-    cluster_labels = cluster_labels + 1
-
-    # Add cluster labels to the grouped dataframe
-    data['cluster'] = cluster_labels
-
-    # Save the dataframe with cluster labels
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+    
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+    df['cluster'] = kmeans.fit_predict(X)
+    
     if sname:
-        data.to_csv(sname, index=True)
+        df['cluster'] = df['cluster'].apply(lambda x: f'Cluster_{x}')
+    
+    return df
 
-    return data
+
+# Build a summary dataframe with counts of each cluster per bag, label per bag, and total instances per bag
+def build_cluster_summary(df, bag_col='PID', cluster_col='cluster', label_col='target'):
+    """
+    Build a summary dataframe with:
+    - counts of each cluster per bag
+    - label per bag
+    - total instances per bag (n)
+
+    Parameters:
+    df (pd.DataFrame): Input dataframe
+    bag_col (str): Column representing bag IDs (e.g., PID)
+    cluster_col (str): Column representing cluster IDs
+    label_col (str): Column representing labels
+
+    Returns:
+    pd.DataFrame: Aggregated dataframe indexed by bag_col
+    """
+
+    # Crosstab: counts of clusters per bag
+    counts = pd.crosstab(df[bag_col], df[cluster_col])
+
+    # Rename columns (c_1, c_2, ...)
+    counts.columns = [f'c_{int(col)}' for col in counts.columns]
+
+    # Reset index for merging
+    counts = counts.reset_index()
+
+    # Get one label per bag
+    labels = df.groupby(bag_col)[label_col].first().reset_index()
+
+    # Merge counts + labels
+    grouped = counts.merge(labels, on=bag_col, how='left')
+
+    # Drop missing labels
+    grouped = grouped.dropna(subset=[label_col])
+
+    # Ensure label is numeric
+    grouped[label_col] = grouped[label_col].astype(float)
+
+    # Total instances per bag
+    count_df = df.groupby(bag_col).size().reset_index(name='n')
+
+    # Merge total counts
+    grouped = grouped.merge(count_df, on=bag_col, how='left')
+
+    # Set index
+    grouped = grouped.set_index(bag_col)
+
+    return grouped
 
 
 # Feature analysis (FA) for instance-level outcomes
